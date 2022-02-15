@@ -44,3 +44,5 @@ bg_chem <- read.csv("../data/BGchem2008data.csv")
 plot(bg_chem$CTD_Depth, bg_chem$CTD_Temperature)
 ```
 
+## Git Lessons
+Today I learned about the `cache timeout` command for the terminal, and how to initialize version control for existing projects.
