@@ -1,0 +1,46 @@
+---
+title: "rmarkdown-lesson"
+author: "Daphne Virlar-Knight"
+date: "2/14/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+*Jeanette* wants a 
+
+1. numbered
+2. list
+
+## With 
+### A subheader 
+
+```{r}
+x <- 3 + 2
+x <- 4 * 7
+
+y <- 3 * 5
+
+z = x + y
+```
+
+
+## Read in data
+
+```{r}
+bg_chem <- read.csv("../data/BGchem2008data.csv")
+  # We had to do ../ before the file path because our .rmd file is in a separate folder than the main parent folder. So R has to go up a level before coming back down to the data folder.
+```
+
+
+## Analysis
+
+
+
+## Plots
+```{r}
+plot(bg_chem$CTD_Depth, bg_chem$CTD_Temperature)
+```
+
