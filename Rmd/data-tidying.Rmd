@@ -1,0 +1,195 @@
+---
+title: "Data Tidying"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+	echo = TRUE,
+	message = FALSE,
+	warning = FALSE
+)
+```
+
+
+```{r message=FALSE, warning=FALSE}
+      #message=FALSE ensures that the dplyr warning that comes up isn't printed when the document is knitted
+library(dplyr)
+library(tidyr)
+library(readr)
+```
+
+## Clean data
+
+```{r}
+catch_original <- read_csv("https://knb.ecoinformatics.org/knb/d1/mn/v2/object/df35b.302.1")
+  #read.csv is base R. Not as powerful as read_csv
+
+# head(catch_original)
+```
+-   drop All and notes since we don't need them
+
+```{r}
+catch_data <- catch_original %>% 
+  #select(Region, Year, Chinook, Sockeye, Coho, Pink, Chum)
+  select(-All, -notesRegCode)
+
+# Different ways to do very early on exploratory data analysis
+head(catch_data)
+glimpse(catch_data)
+summary(catch_data)
+```
+
+
+-   Change Chinook from character to numeric type
+```{r}
+catch_clean <- catch_data %>% 
+  mutate(Chinook = as.numeric(Chinook))
+      # (NewColumn = arguments for old column)
+      #NAs introduced by coercion -- means as.numeric() didn't know what to do with some value, and so turns some values into NA 
+```
+
+### finding spurious characters in Chinook column
+```{r}
+# create a dummy variable 
+# which function returns true values
+  # "which returns indices where the value is true" - Jeanette
+i <- which(is.na(catch_clean$Chinook))
+# i
+  # this tells us that there's only one problem row, and that's on row 401
+
+# look at value of that row
+# catch_original[i, ]
+  # df[row, column]
+  # this expression gives us an output of the data frame that shows a value in the chinook row 401, that looks like it could be an uppercase i.
+
+# We'll fix that now in the above code chunk!
+
+```
+
+
+-   Continue to change Chinook from character to numeric
+```{r}
+catch_clean <- catch_data %>% 
+  mutate(Chinook = if_else(Chinook == "I", "1", Chinook)) %>% 
+  mutate(Chinook = as.numeric(Chinook))
+
+# Check to see if class of Chinook column is still a chr
+# head(catch_clean)
+  # it's not, it's now the same as the other species columns with dbl
+
+```
+
+
+## Reshaping Data
+
+-   Move from wide format to long format
+```{r}
+catch_long <- catch_clean %>% 
+  pivot_longer(cols = -c(Region, Year), # this says don't pivot over region and year. It WILL pivot over the different species columns though.
+               names_to = "Species",
+               values_to = "Catch") 
+
+# head(catch_long)
+
+```
+
+-   Now move from long format to wide
+```{r}
+catch_wide <- catch_long %>% 
+  pivot_wider(names_from = Region,
+              values_from = Catch)
+
+# head(catch_wide)
+
+```
+-   Why can I call columns with and without quotes? What's going on?
+  -   If we're calling a column that already exists, that's when we can/MUST call the columns as unquoted variable names.
+  -   If we're calling a column that doesn't exist yet, that's when we have to pass it through a set of quotes, because we're creating a character string column name.
+
+### let's learn about rename
+```{r}
+catch_long <- catch_clean %>% 
+  pivot_longer(cols = -c(Region, Year),
+               names_to = "Species",
+               values_to = "Catch") %>% 
+  rename(catch_thousands = Catch) %>% 
+        # new col name = old col name
+  mutate(catch = catch_thousands * 1000) %>% 
+  select(-catch_thousands)
+
+# head(catch_long)
+```
+
+
+
+## Split-Apply-Combine
+
+-   mean catch by region
+```{r}
+mean_region <- catch_long %>% 
+  group_by(Region) %>% 
+  summarise(catch_mean = mean(catch))
+
+# head(mean_region)
+
+
+# Can also group by region AND species
+mean_region <- catch_long %>% 
+  group_by(Region, Species) %>% 
+  summarise(catch_mean = mean(catch))
+
+# Can override grouping on the backend by using .groups
+mean_region <- catch_long %>% 
+  group_by(Region, Species) %>% 
+  summarise(catch_mean = mean(catch), .groups = "drop")
+
+
+# Now let's introduce n = n()
+# n=n() means that a variable named n will be assigned the number of rows (think number of observations) in the summarized data.
+# In other words, n=n() counts the number of rows in each group
+mean_region <- catch_long %>% 
+  group_by(Region, Species) %>% 
+  summarise(catch_mean = mean(catch), 
+            n = n(),
+            .groups = "drop")
+
+# head(mean_region)
+
+
+
+# Let's say we're only interested in sockeye
+mean_region <- catch_long %>% 
+  filter(Species == "Sockeye") %>% 
+  group_by(Region, Species) %>% 
+  summarise(catch_mean = mean(catch), 
+            n = n(),
+            .groups = "drop")
+
+# head(mean_region)
+```
+
+
+## Joins
+```{r}
+region_defs <- read.csv("https://knb.ecoinformatics.org/knb/d1/mn/v2/object/df35b.303.1") %>% 
+    select(code, mgmtArea)
+
+# head(region_defs)
+```
+
+```{r warning=FALSE}
+# catch_joined <- left_join(catch_long, region_defs)
+   # this helps to know which df is on the left and right side
+   # code returns an error bc we don't tell it HOW to join the tables
+
+catch_joined <- left_join(catch_long, region_defs,
+                          by = c("Region" = "code"))
+
+# head(catch_joined)
+# nrow(catch_joined) == nrow(catch_long)
+  # TRUE output is another indicator that our left join worked
+```
+
+
+
