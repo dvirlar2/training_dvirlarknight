@@ -1,0 +1,47 @@
+---
+title: "Data Visualization"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, message=FALSE, warning=FALSE}
+library(leaflet)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(DT)
+library(scales)
+```
+
+```{r}
+data_url <- "https://knb.ecoinformatics.org/knb/d1/mn/v2/object/urn%3Auuid%3Af119a05b-bbe7-4aea-93c6-85434dcb1c5e"
+
+esc <- tryCatch(
+    read.csv("data/escapement.csv"),
+    error=function(cond) {
+        message(paste("Escapement file does not seem to exist, so get it from the KNB."))
+        esc <- read.csv(url(data_url, method = "libcurl"))
+        return(esc)
+    }
+)
+
+head(esc)
+```
+
+```{r}
+# Calculate annual escapement by species and region of salmon
+# Specifically, let's look only for Chinook, Sockeye, Chum, Coho, and Pink
+
+annual_esc <- esc %>% 
+  separate(sampleDate, #split the values in our date column
+           into = c("Year", "Month", "Date"),
+           sep = "-") %>% 
+  mutate(Year = as.numeric(Year)) %>% 
+  group_by(Species, SASAP.Region, Year) %>% 
+  summarise(Escapement_Annual = sum(DailyCount)) %>% 
+  filter(Species %in% c("Chinook", "Sockeye", "Chum", "Coho", "Pink"))
+```
+
