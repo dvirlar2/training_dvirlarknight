@@ -34,3 +34,20 @@ airtemps_f <- cels_to_fahr(airtemps_c)
 airtemps == airtemps_f
 
 
+# Let's do Kelvin
+convert_temps <- function(fahr){
+  celsius <- (fahr - 32) * 5/9
+  kelvin <- celsius + 273.15
+  return(data.frame(fahrenheit = fahr,
+                    celsius = celsius,
+                    kelvin = kelvin))
+}
+
+# Use custom theme function (now in a script) to make a little ggplot
+temps_df <- convert_temps(fahr = airtemps)
+ggplot(temps_df, aes(x = fahrenheit, y = celsius, color = kelvin)) +
+  geom_point() +
+  custom_theme()
+
+# Head over to plotting.rmd to see how to source the ggplot custom theme.
+# This will be in a code chunk under the libraries
