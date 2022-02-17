@@ -17,6 +17,12 @@ library(scales)
 ```
 
 ```{r}
+# Example for how to load a custom function from the same project
+source("../R-Scripts/custom_theme.R")
+```
+
+
+```{r}
 data_url <- "https://knb.ecoinformatics.org/knb/d1/mn/v2/object/urn%3Auuid%3Af119a05b-bbe7-4aea-93c6-85434dcb1c5e"
 
 esc <- tryCatch(
