@@ -1,0 +1,130 @@
+---
+title: "Bird Brain"
+output: html_document
+---
+
+The goal of this exercise is two fold.
+  1. Find which species of predator is the most abundant, and view how this has changed through time.
+  2. Determine if the number of eggs preyed upon increase with the total number of predators among species that lay nests.
+  
+This means we want to species information from both the predator surveys data and the nest data, time data, count/abundance data, predation data, and nesting data. 
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Load the necessary libraries
+```{r message=FALSE, warning=FALSE}
+library(rvest) 
+  # package that enables easy scraping and handling of information from websites
+library(readr)
+library(dplyr)
+library(tidyr) # need for drop_na
+library(janitor)
+  # package that has simple tools for cleaning up data. It is especially handy
+  # for handling improperly named variables in a data.frame
+library(ggplot2)
+```
+
+
+## Read in and clean the data
+
+```{r message=FALSE, warning=FALSE}
+# Read in data
+nest <- read_csv("../data/Utqiagvik_nest_data.csv")
+predators <- read_csv("../data/Utqiagvik_predator_surveys.csv")
+
+
+# Clean data
+nest_clean <- nest %>% 
+  select(year, species, number_eggs_predated)
+
+predators_clean <- predators %>% 
+  select(year, species, count) 
+
+```
+
+
+## Join the tables
+
+Now we're going to join the nest_clean & predators_clean dataframes with a new data frame we'll call species, which will have species name and code. This acts as the foreign key. 
+
+```{r message=FALSE, warning=FALSE}
+# First, load and clean the data for species name and code
+webpage <- read_html("https://www.pwrc.usgs.gov/bbl/manual/speclist.cfm")
+
+tbls <- html_nodes(webpage, "table") %>% 
+    html_table(fill = TRUE)
+
+species <- tbls[[1]] %>% 
+    clean_names() %>% # cleans up the column names, and is from janitor package
+    select(alpha_code, common_name) %>% 
+    mutate(alpha_code = tolower(alpha_code)) # make alpha code all lower case,
+          # because the species code in the species dataset are all lower case.
+```
+
+
+```{r message=FALSE, warning=FALSE}
+# Write function to join the tables
+species_translate <- function(left_table, right_table){
+
+  data_joined <- left_join(left_table, right_table,
+                           by = c("species" = "alpha_code"))
+  
+  return(data_joined)
+}
+
+# Join the species df to nest and predators
+nest_join <- species_translate(nest_clean, species)
+pred_join <- species_translate(predators_clean, species)
+
+```
+
+
+
+
+```{r echo=FALSE}
+# Calculate the total number of predators by year and species
+pred_summarized <- pred_join %>% 
+  group_by(year, common_name) %>% 
+  summarize(abundance = sum(count, na.rm = T), .groups = "drop") %>% 
+  filter(!is.na(common_name))
+
+# Now plot the result
+ggplot(pred_summarized, aes(x = year, y = abundance, color = common_name)) +
+  geom_line() +
+  geom_point()
+
+```
+
+
+```{r include=FALSE}
+# Calculate number of eggs predated by year and species
+eggs_predated <- nest_join %>% 
+  group_by(year, common_name) %>% 
+  summarize(total_egg_predated = sum(number_eggs_predated, na.rm = T),
+            .groups = "drop") %>% 
+  filter(!is.na(common_name))
+
+
+# Calculate total number of predators by year
+total_pred <- pred_join %>% 
+  group_by(year) %>% 
+  summarize(abundance = sum(count))
+
+# Join the tables
+nest_pred <- left_join(eggs_predated, total_pred, by = "year")
+
+```
+
+
+```{r echo=FALSE}
+# Make a silly little graph
+ggplot(nest_pred, aes(x = abundance, y = total_egg_predated)) +
+  geom_point() +
+  facet_wrap(~common_name, scales = "free_y", ncol = 2) +
+  theme_bw()
+
+
+```
+
