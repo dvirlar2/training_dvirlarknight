@@ -31,6 +31,9 @@ library(ggplot2)
 
 ```{r message=FALSE, warning=FALSE}
 # Read in data
+# Can read in the csvs using URLs, and moving forward I should use that method.
+# But for now, I read in the data as usual to document the "../" process of
+    # navigating to a different folder where the data lives that this Rmd doesnt
 nest <- read_csv("../data/Utqiagvik_nest_data.csv")
 predators <- read_csv("../data/Utqiagvik_predator_surveys.csv")
 
